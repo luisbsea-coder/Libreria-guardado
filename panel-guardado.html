@@ -71,6 +71,9 @@
   th{background:var(--paper-2);font-weight:600;color:var(--sage);text-transform:uppercase;font-size:.72rem;letter-spacing:.06em}
   tr:last-child td{border-bottom:none}
   .del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:.82rem;text-decoration:underline}
+  .inv-actions{white-space:nowrap}
+  .sell-btn{background:var(--green);color:#fff;border:none;border-radius:4px;padding:5px 12px;font-family:'Instrument Sans';font-weight:600;font-size:.8rem;cursor:pointer;margin-right:8px}
+  .sell-btn:hover{background:#187a41}
   .new-tag{background:var(--gold);color:var(--ink);font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:6px}
   .more-row{text-align:center;padding:16px}
 
@@ -171,7 +174,7 @@
   <!-- INVENTARIO -->
   <section class="panel" id="inv">
     <h2>Inventario</h2>
-    <p class="sub">Todos los libros disponibles. Busca, filtra y elimina lo que ya no tengas.</p>
+    <p class="sub">Todos los libros disponibles. Cuando confirmes una venta por WhatsApp, busca el libro y pulsa <strong>Vender</strong>: se registra la venta con su precio y sale del inventario automáticamente.</p>
     <div class="stat-row" id="invStats"></div>
     <div class="inv-controls">
       <input id="invSearch" placeholder="Buscar título o autor…" oninput="invReset()">
@@ -179,7 +182,7 @@
       <select id="invCat" onchange="invReset()"><option value="">Todas las categorías</option><option>Narrativa</option><option>No ficción</option><option>Ciencia ficción y fantasía</option><option>Poesía</option><option>Infantil y juvenil</option><option>Otros</option></select>
     </div>
     <table>
-      <thead><tr><th>Título</th><th>Autor</th><th>Idioma</th><th>Cat.</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Título</th><th>Autor</th><th>Idioma</th><th>Cat.</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody id="invBody"></tbody>
     </table>
     <div id="invMore"></div>
@@ -367,7 +370,10 @@ function renderInv(){
       <td>${esc(b.t)}${b.isNew?'<span class="new-tag">NUEVO</span>':''}</td>
       <td>${esc(b.a||"—")}</td><td>${b.lang}</td><td>${esc(b.cat)}</td>
       <td>${money(b.p)}</td><td>${esc(b.e||"—")}</td>
-      <td><button class="del" onclick="delBook('${b.id}')">Eliminar</button></td>
+      <td class="inv-actions">
+        <button class="sell-btn" onclick='sellBook(${JSON.stringify(b.id)})'>Vender</button>
+        <button class="del" onclick='delBook(${JSON.stringify(b.id)})'>Eliminar</button>
+      </td>
     </tr>`).join("");
   document.getElementById("invMore").innerHTML = list.length>invShown
     ? `<div class="more-row"><button class="btn ghost" onclick="invShown+=30;renderInv()">Ver más (${list.length-invShown} restantes)</button></div>`
@@ -378,6 +384,19 @@ function delBook(id){
   if(!confirm("¿Eliminar este libro del inventario?")) return;
   const del = load(KEY_DEL); del.push(id); save(KEY_DEL, del);
   renderInv();
+}
+function sellBook(id){
+  const libro = allBooks().find(b=>b.id===id);
+  if(!libro) return;
+  if(!confirm(`¿Marcar como VENDIDO?\n\n"${libro.t}" — ${money(libro.p)}\n\nSe registrará la venta y el libro saldrá del inventario.`)) return;
+  // registrar venta con el precio del libro
+  const sales = load(KEY_SALES);
+  sales.push({ title: libro.t + (libro.a ? " ("+libro.a+")" : ""), amount: libro.p, date: todayStr() });
+  save(KEY_SALES, sales);
+  // descontar del inventario
+  const del = load(KEY_DEL); del.push(id); save(KEY_DEL, del);
+  renderInv();
+  alert(`✓ Venta registrada: ${money(libro.p)}\nEl libro salió del inventario.`);
 }
 
 /* ---------- VENTAS ---------- */
